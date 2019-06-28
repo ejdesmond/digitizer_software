@@ -31,11 +31,21 @@ daq_device_digitizer::daq_device_digitizer(const int eventtype
   _dcm2configfilename = dcm2datfileName;
   _partreadoutJseb2Name = dcm2partreadoutJsebName;
   _dcm2jseb2name = dcm2Jseb2Name;
+
+  char *adc_config_dir = getenv("ADC_CONFIG_DIR");
+  if (!adc_config_dir) {
+    adcconfigfileDir = "/home/phnxrc/";
+  } else {
+    adcconfigfileDir = adc_config_dir;
+  }
+
+  _adcconfigfilename = adcconfigfileDir + adcconfigfilename;
+
   _adcjseb2name =  adcJseb2Name;
   _outputDataFileName = "rcdaq_digitizerdata.prdf"; // default file for filebuffer
   // here define directory of digitizer configuration file
   // default to 1 xmit group if configuration file is not found
-  if (parseAdcConfigFile( adcconfigfilename) != 0 )
+  if (parseAdcConfigFile( _adcconfigfilename) != 0 )
     {
       std::cout  << __FILE__ << " " << __LINE__ << " Error: unable to open configuration file  "<< adcconfigfilename.c_str() << " using defaults 16,3,58,31 " << endl;
 
@@ -49,29 +59,33 @@ daq_device_digitizer::daq_device_digitizer(const int eventtype
   //_num_xmitgroups = n_xmitgroups;
 
   std::cout << __LINE__ << "  " << __FILE__ << " num xmit groups found = " << _num_xmitgroups << endl;
-  
 
 
   _th = 0;
-
   _broken = 0;
 
   pthread_mutex_init( &DataReadoutDone, 0);
   pthread_mutex_init( &DataReadyReset, 0);
   pthread_mutex_lock(  &DataReadoutDone);
 
+
   // set dcm2 dat file name used based on the adc sample size set; only using 16 or 31 sample size now
   if (xmit_groups[0].n_samples == 16 )
     {
+      if (_num_xmitgroups > 1)
+        _dcm2configfilename = "dcm2ADCPar_16M.dat"; // hitformat 95
+      else
       _dcm2configfilename = "dcm2ADCPar_16.dat"; // hitformat 95
     } else 
     {
       // 31 sample size
-      _dcm2configfilename = "dcm2ADCPar_32.dat"; // hitformat 93
+      if (_num_xmitgroups > 1)
+        _dcm2configfilename = "dcm2ADCPar_32M.dat"; // hitformat 93
+      else
+        _dcm2configfilename = "dcm2ADCPar_32.dat"; // hitformat 93
     }
 
-  cout << __LINE__ << "  " << __FILE__ << " create new triggerhandler " << endl;
-  //  _th  = new digitizerTriggerHandler ( m_eventType,_dcm2configfilename,_outputDataFileName,_partreadoutJseb2Name,_dcm2jseb2name ,_adcjseb2name,_slot_nr,_nr_modules,_l1_delay,_n_samples,_nevents);
+
 
   _th  = new digitizerTriggerHandler ( m_eventType,xmit_groups,_dcm2configfilename,_outputDataFileName,_partreadoutJseb2Name,_dcm2jseb2name ,_adcjseb2name,_num_xmitgroups,_nevents);
 
@@ -122,7 +136,7 @@ bool daq_device_digitizer::adc_getline(ifstream *fin, string *line)
 }
 
 /*
- *
+ * Parset the configuration file for the digitizers.
  * file format 
  *  each line contains a single line for each xmit group. Each line contains:
  *  nevents, n_xmitgroups, n_slot, n_modules, l1_delay, n_samples
