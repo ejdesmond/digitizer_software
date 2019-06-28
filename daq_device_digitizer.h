@@ -53,6 +53,8 @@ protected:
   unsigned int number_of_words;
   string _dcm2jseb2name;
   string _adcjseb2name;
+  string _adcconfigfilename;
+  string adcconfigfileDir;
   string _partreadoutJseb2Name;
   string _dcm2configfilename; // dcm2 dat file
   string _dcm2name;
